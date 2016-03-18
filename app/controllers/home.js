@@ -32,10 +32,12 @@ router.post('/', function (req, res, next){
   if(consl.length!=0){
     if(consl.length>=2){
       mkdir('files/' + consl[0]);
-      Record.find({'associatedParty.firstName':{ "$regex": consl[0], "$options": "i" },'associatedParty.lastName':{ "$regex": consl[1], "$options": "i" }}, 'taxonRecordName associatedParty creation_date', {sort : { _id: -1 }}, function(err, records){
-          if(err)
-            res.send(err);
-          async.forEachOf(records, function(value, key, callback){
+
+      Record.paginate({'associatedParty.firstName':{ "$regex": consl[0], "$options": "i" },'associatedParty.lastName':{ "$regex": consl[1], "$options": "i" }}, { select : 'taxonRecordName associatedParty creation_date', sort : { _id: -1 }, page: 1, limit: 200 }, function(err, records) {
+        if(err){
+            response = {"error" : true,"message" : "Error fetching data"};
+          }else{
+            async.forEachOf(records.docs, function(value, key, callback){
             if(typeof  value._doc.creation_date==="undefined"){
               creation_date=value._id.getTimestamp();
               value._doc.creation_date =creation_date.toString();
@@ -66,8 +68,15 @@ router.post('/', function (req, res, next){
               console.log('Proccess finished');
                return next();
             });
-         
+        } 
       });
+
+/*
+      Record.find({'associatedParty.firstName':{ "$regex": consl[0], "$options": "i" },'associatedParty.lastName':{ "$regex": consl[1], "$options": "i" }}, 'taxonRecordName associatedParty creation_date', {sort : { _id: -1 },limit : 200}, function(err, records){
+          if(err)
+            res.send(err);
+          
+      });*/
     }
   }else{
     data = 'No results';
@@ -89,7 +98,7 @@ var pdfWriter = function (doc, data, ini, index){
   if (!(data instanceof Array) && !(data instanceof Object)){
     console.log(data);
     doc.fillColor('black');
-    doc.fontSize(10)
+    doc.fontSize(10);
     doc.text(index + ': ' + data, _ini);
     _ini = 20;
 
@@ -131,6 +140,7 @@ var pdfWriter = function (doc, data, ini, index){
                         
         } else {
             doc.fillColor('black');
+            doc.fontSize(10);
             doc.text(key + ': ' + data[key], _ini);  
         }
                       
